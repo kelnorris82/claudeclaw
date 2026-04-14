@@ -5,6 +5,7 @@ import { buildState, buildTechnicalInfo, sanitizeSettings } from "./services/sta
 import { readHeartbeatSettings, updateHeartbeatSettings } from "./services/settings";
 import { createQuickJob, deleteJob } from "./services/jobs";
 import { readLogs } from "./services/logs";
+import { listChats, loadChat, saveChat, deleteChat } from "./services/chats";
 
 export function startWebUi(opts: StartWebUiOptions): WebServerHandle {
   const server = Bun.serve({
@@ -18,6 +19,41 @@ export function startWebUi(opts: StartWebUiOptions): WebServerHandle {
         return new Response(htmlPage(), {
           headers: { "Content-Type": "text/html; charset=utf-8" },
         });
+      }
+
+      if (url.pathname === "/manifest.json") {
+        return json({
+          name: "ClaudeClaw",
+          short_name: "Claw",
+          description: "ClaudeClaw Dashboard",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#0d1117",
+          theme_color: "#0d1117",
+          icons: [
+            { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }
+          ]
+        });
+      }
+
+      if (url.pathname === "/sw.js") {
+        const sw = `self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('/api/')) return;
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});`;
+        return new Response(sw, {
+          headers: { "Content-Type": "application/javascript", "Service-Worker-Allowed": "/" },
+        });
+      }
+
+      if (url.pathname === "/icon.svg") {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="96" fill="#0d1117"/>
+<text x="256" y="320" font-size="280" text-anchor="middle" font-family="sans-serif">🦞</text>
+</svg>`;
+        return new Response(svg, { headers: { "Content-Type": "image/svg+xml" } });
       }
 
       if (url.pathname === "/api/health") {
@@ -149,29 +185,99 @@ export function startWebUi(opts: StartWebUiOptions): WebServerHandle {
         return json(await readLogs(tail));
       }
 
+      // Chat history persistence
+      if (url.pathname === "/api/chats" && req.method === "GET") {
+        try {
+          return json({ ok: true, chats: await listChats() });
+        } catch (err) {
+          return json({ ok: false, error: String(err) });
+        }
+      }
+
+      if (url.pathname.startsWith("/api/chats/") && req.method === "GET") {
+        try {
+          const id = decodeURIComponent(url.pathname.slice("/api/chats/".length));
+          const chat = await loadChat(id);
+          if (!chat) return json({ ok: false, error: "not found" });
+          return json({ ok: true, chat });
+        } catch (err) {
+          return json({ ok: false, error: String(err) });
+        }
+      }
+
+      if (url.pathname.startsWith("/api/chats/") && req.method === "POST") {
+        try {
+          const id = decodeURIComponent(url.pathname.slice("/api/chats/".length));
+          const body = await req.json();
+          const messages = Array.isArray(body?.messages) ? body.messages : [];
+          const chat = await saveChat(id, messages);
+          return json({ ok: true, chat });
+        } catch (err) {
+          return json({ ok: false, error: String(err) });
+        }
+      }
+
+      if (url.pathname.startsWith("/api/chats/") && req.method === "DELETE") {
+        try {
+          const id = decodeURIComponent(url.pathname.slice("/api/chats/".length));
+          await deleteChat(id);
+          return json({ ok: true });
+        } catch (err) {
+          return json({ ok: false, error: String(err) });
+        }
+      }
+
       if (url.pathname === "/api/chat" && req.method === "POST") {
         if (!opts.onChat) return json({ ok: false, error: "chat not configured" });
         try {
           const body = await req.json();
           const message = String(body?.message ?? "").trim();
+          const chatId = String(body?.chatId ?? "").trim();
           if (!message) return json({ ok: false, error: "message required" });
+
+          // Save user message server-side immediately
+          if (chatId) {
+            const existing = await loadChat(chatId);
+            const msgs = existing?.messages ?? [];
+            msgs.push({ role: "user", text: message });
+            await saveChat(chatId, msgs);
+          }
 
           const encoder = new TextEncoder();
           const onChat = opts.onChat;
+          let responseText = "";
+
           const stream = new ReadableStream({
             async start(controller) {
               const send = (data: object) => {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+                try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`)); } catch {}
               };
               try {
                 await onChat(
                   message,
-                  (chunk) => send({ type: "chunk", text: chunk }),
+                  (chunk) => {
+                    responseText += chunk;
+                    send({ type: "chunk", text: chunk });
+                  },
                   () => send({ type: "unblock" })
                 );
                 send({ type: "done" });
+                // Save completed response server-side
+                if (chatId) {
+                  const chat = await loadChat(chatId);
+                  const msgs = chat?.messages ?? [];
+                  msgs.push({ role: "assistant", text: responseText });
+                  await saveChat(chatId, msgs);
+                }
               } catch (err) {
                 send({ type: "error", message: String(err) });
+                // Save error response server-side too
+                if (chatId && responseText) {
+                  const chat = await loadChat(chatId);
+                  const msgs = chat?.messages ?? [];
+                  msgs.push({ role: "assistant", text: responseText + "\n\n[Error: " + String(err) + "]" });
+                  await saveChat(chatId, msgs);
+                }
               } finally {
                 controller.close();
               }

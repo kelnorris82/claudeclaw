@@ -18,7 +18,14 @@ export function htmlPage(): string {
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ClaudeClaw" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
   <title>ClaudeClaw</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,7 +46,7 @@ ${pageStyles}
     <span class="repo-text">Like ClaudeClaw? Star it on GitHub</span>
     <span class="repo-star">★</span>
   </a>
-  <button class="settings-btn" id="settings-btn" type="button">Settings</button>
+  <!-- settings button moved into tab-nav -->
   <aside class="settings-modal" id="settings-modal" aria-live="polite">
     <div class="settings-head">
       <span>Settings</span>
@@ -62,6 +69,13 @@ ${pageStyles}
           <div class="settings-meta" id="clock-info">24-hour format</div>
         </div>
         <button class="hb-toggle" id="clock-toggle" type="button">24h</button>
+      </div>
+      <div class="setting-item">
+        <div class="setting-main">
+          <div class="settings-label">🔗 GitHub Banner</div>
+          <div class="settings-meta">Star on GitHub header bar</div>
+        </div>
+        <button class="hb-toggle" id="header-toggle" type="button">On</button>
       </div>
       <div class="setting-item">
         <div class="setting-main">
@@ -115,6 +129,7 @@ ${pageStyles}
     <nav class="tab-nav" role="tablist" aria-label="Main navigation">
       <button class="tab-btn tab-btn-active" id="tab-dashboard" type="button" role="tab" aria-selected="true" aria-controls="dashboard-panel">Dashboard</button>
       <button class="tab-btn" id="tab-chat" type="button" role="tab" aria-selected="false" aria-controls="chat-panel">Chat</button>
+      <button class="tab-btn tab-btn-settings" id="settings-btn" type="button" title="Settings">&#x2699;</button>
     </nav>
     <div id="dashboard-panel">
     <section class="hero">
@@ -185,6 +200,18 @@ ${pageStyles}
     </section>
     </div>
     <div id="chat-panel" class="chat-panel" hidden>
+      <div class="chat-toolbar">
+        <div class="chat-toolbar-left">
+          <button id="chat-sync-btn" class="chat-toolbar-btn chat-sync-icon" type="button" title="Sync from server">↻</button>
+          <button id="chat-history-btn" class="chat-toolbar-btn" type="button" title="Chat history">History</button>
+          <button id="chat-new-btn" class="chat-toolbar-btn" type="button" title="New chat">+ New</button>
+        </div>
+        <button id="chat-clear" class="chat-toolbar-btn" type="button" title="Clear current chat">🗑 Clear</button>
+        <div id="chat-history-dropdown" class="chat-history-dropdown" hidden>
+          <div class="chat-history-head">Saved Chats</div>
+          <div id="chat-history-list" class="chat-history-list"></div>
+        </div>
+      </div>
       <div id="chat-messages" class="chat-messages"></div>
       <div class="chat-input-area">
         <form id="chat-form" class="chat-form">
@@ -192,7 +219,7 @@ ${pageStyles}
             id="chat-input"
             class="chat-input"
             placeholder="Message Claude..."
-            rows="1"
+            rows="3"
             autocomplete="off"
           ></textarea>
           <button id="chat-cancel" class="chat-cancel" type="button" hidden>Cancel</button>

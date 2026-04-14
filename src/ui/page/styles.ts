@@ -20,6 +20,7 @@ export const pageStyles = String.raw`    :root {
       width: 100%;
       min-height: 100%;
       margin: 0;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
     body {
@@ -72,14 +73,18 @@ export const pageStyles = String.raw`    :root {
     }
 
     .stage {
-      min-height: 100vh;
-      display: grid;
-      justify-items: center;
-      align-items: start;
-      padding: 64px 16px 120px;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 42px 16px 90px;
       position: relative;
       z-index: 1;
+      overflow: hidden;
     }
+    body.hide-header .repo-cta { display: none; }
+    body.hide-header .stage { padding-top: 12px; }
 
     .hero {
       text-align: center;
@@ -145,11 +150,12 @@ export const pageStyles = String.raw`    :root {
     .time {
       display: block;
       width: 100%;
-      font-family: "Fraunces", serif;
-      font-size: clamp(4.2rem, 15vw, 10rem);
+      font-family: serif;
+      font-size: clamp(3rem, 10vw, 6rem);
       line-height: 0.95;
       letter-spacing: -0.04em;
       font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
       text-align: center;
       text-shadow: 0 10px 35px #00000055;
       transition: text-shadow 280ms ease;
@@ -177,6 +183,7 @@ export const pageStyles = String.raw`    :root {
     .quick-job {
       margin: 20px auto 0;
       width: min(720px, 100%);
+      max-width: 100%;
       padding: 14px;
       border: 1px solid #ffffff22;
       border-radius: 16px;
@@ -562,27 +569,20 @@ export const pageStyles = String.raw`    :root {
       display: none;
     }
     .settings-btn {
-      position: fixed;
-      top: 52px;
-      right: 18px;
-      z-index: 5;
-      border: 1px solid #ffffff2a;
-      background: #0b1220c7;
-      color: #dce7f8;
-      backdrop-filter: blur(8px);
-      border-radius: 999px;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      padding: 10px 14px;
-      cursor: pointer;
-      transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+      /* now rendered inside .tab-nav as gear icon — keep for ID reference */
+      display: none;
     }
-    .settings-btn:hover {
-      transform: translateY(-1px);
-      background: #122038d0;
-      border-color: #ffffff45;
+    #dashboard-panel {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 120px;
+      scrollbar-width: thin;
+      scrollbar-color: #3a5a80 transparent;
     }
     .repo-cta {
       position: fixed;
@@ -1079,15 +1079,23 @@ export const pageStyles = String.raw`    :root {
       display: flex;
       gap: 6px;
       justify-content: center;
-      margin-bottom: 28px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-shrink: 0;
       background: #ffffff08;
       backdrop-filter: blur(8px);
       border: 1px solid #ffffff14;
       border-radius: 999px;
       padding: 4px;
       width: fit-content;
-      margin-left: auto;
-      margin-right: auto;
+    }
+    .tab-btn-settings {
+      font-size: 22px;
+      padding: 0 12px;
+      line-height: 32px;
+      border-left: 1px solid #ffffff12;
+      margin-left: 2px;
+      border-radius: 0 999px 999px 0;
     }
     .tab-btn {
       height: 32px;
@@ -1120,17 +1128,113 @@ export const pageStyles = String.raw`    :root {
       width: min(100%, 920px);
       min-width: min(680px, 100%);
       max-width: 100%;
-      height: calc(100svh - 280px);
-      min-height: 400px;
+      flex: 1;
+      min-height: 0;
       text-align: left;
       border: 1px solid #ffffff22;
-      border-radius: 16px;
+      border-radius: 16px 16px 0 0;
       background:
         radial-gradient(120% 100% at 100% 0%, #7dc5ff12, transparent 55%),
         linear-gradient(180deg, #0e1a2a88 0%, #0a1220a8 100%);
       backdrop-filter: blur(6px);
       box-shadow: 0 14px 34px #00000045;
       overflow: hidden;
+    }
+    .chat-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      border-bottom: 1px solid #ffffff12;
+      position: relative;
+    }
+    .chat-toolbar-left {
+      display: flex;
+      gap: 6px;
+    }
+    .chat-toolbar-btn {
+      border: 1px solid #ffffff1a;
+      border-radius: 6px;
+      background: transparent;
+      color: #a8b4c5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .chat-toolbar-btn:hover {
+      background: #ffffff10;
+      color: #eef4ff;
+    }
+    .chat-sync-icon {
+      font-size: 14px;
+      padding: 2px 8px;
+      line-height: 1;
+    }
+    .chat-history-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 10px;
+      right: 10px;
+      background: #1a1e2a;
+      border: 1px solid #ffffff1a;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 50;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .chat-history-head {
+      padding: 8px 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      color: #6b7a90;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #ffffff0d;
+    }
+    .chat-history-list {
+      padding: 4px;
+    }
+    .chat-history-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #c8d4e5;
+      text-align: left;
+      cursor: pointer;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 12px;
+      transition: background 0.12s;
+    }
+    .chat-history-item:hover {
+      background: #ffffff0d;
+    }
+    .chat-history-active {
+      background: #ffffff08;
+      border-left: 2px solid #6e8efb;
+    }
+    .chat-history-preview {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chat-history-meta {
+      font-size: 10px;
+      color: #5a6a7e;
+    }
+    .chat-history-empty {
+      padding: 12px;
+      text-align: center;
+      font-size: 11px;
+      color: #5a6a7e;
     }
     .chat-messages {
       flex: 1;
@@ -1316,16 +1420,20 @@ export const pageStyles = String.raw`    :root {
 
     @media (max-width: 640px) {
       .stage {
-        padding-top: 50px;
-        padding-bottom: 160px;
+        padding: 38px 8px 80px;
+      }
+      body.hide-header .stage { padding-top: 8px; }
+      .tab-nav {
+        margin-bottom: 8px;
       }
       .repo-cta {
         font-size: 10px;
         height: 30px;
         gap: 7px;
       }
-      .settings-btn {
-        top: 42px;
+      .chat-panel {
+        min-width: 100%;
+        border-radius: 12px 12px 0 0;
       }
       .quick-job {
         margin-top: 14px;
@@ -1339,36 +1447,38 @@ export const pageStyles = String.raw`    :root {
         grid-template-columns: 1fr;
       }
       .dock-shell {
-        bottom: 14px;
-        width: min(980px, calc(100% - 12px));
-        grid-template-columns: 62px minmax(0, 1fr) 62px;
-        gap: 8px;
-      }
-      .dock {
-        border-radius: 18px;
-        flex-wrap: wrap;
-        gap: 4px 0;
-      }
-      .pill {
-        font-size: 11px;
-        min-height: 50px;
-        flex: 1 1 50%;
-        border-right: 0;
-        border-bottom: 0;
+        bottom: 8px;
+        width: calc(100% - 12px);
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
       }
       .side-bubble {
-        width: 62px;
-        height: 62px;
-        padding: 6px;
+        display: none;
       }
-      .side-value {
-        font-size: 12px;
+      .dock {
+        border-radius: 14px;
+        padding: 4px 6px;
+        flex-wrap: nowrap;
+        gap: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
-      .side-label {
+      .pill {
+        font-size: 10px;
+        min-height: 38px;
+        flex: 0 0 auto;
+        padding: 5px 8px;
+      }
+      .pill-label {
         font-size: 9px;
+        gap: 3px;
       }
-      .pill:last-child,
-      .pill:nth-last-child(2) {
-        border-bottom: 0;
+      .pill-icon {
+        font-size: 10px;
+        width: 12px;
+        min-width: 12px;
+      }
+      .pill-value {
+        font-size: 10px;
       }
     }`;
