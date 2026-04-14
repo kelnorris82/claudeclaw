@@ -1191,7 +1191,6 @@ export const pageStyles = String.raw`    :root {
       font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       line-height: 1.55;
-      white-space: pre-wrap;
       word-break: break-word;
     }
     .chat-msg-user .chat-msg-text {
@@ -1199,6 +1198,7 @@ export const pageStyles = String.raw`    :root {
       border: 1px solid #2a6aaa44;
       color: #d8eeff;
       border-bottom-right-radius: 4px;
+      white-space: pre-wrap;
     }
     .chat-msg-assistant .chat-msg-text {
       background: #0b1828cc;
@@ -1206,6 +1206,34 @@ export const pageStyles = String.raw`    :root {
       color: #e4eefb;
       border-bottom-left-radius: 4px;
     }
+    .chat-msg-text code {
+      background: #ffffff15;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .chat-msg-text pre {
+      background: #00000040;
+      padding: 8px 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 6px 0;
+    }
+    .chat-msg-text pre code {
+      background: none;
+      padding: 0;
+    }
+    .chat-msg-text strong { color: #fff; }
+    .chat-msg-text h3, .chat-msg-text h4, .chat-msg-text h5 {
+      margin: 8px 0 4px;
+      font-size: 13px;
+      color: #fff;
+    }
+    .chat-msg-text ul {
+      margin: 4px 0;
+      padding-left: 18px;
+    }
+    .chat-msg-text li { margin: 2px 0; }
     .chat-msg-streaming .chat-msg-text::after {
       content: "▋";
       display: inline-block;

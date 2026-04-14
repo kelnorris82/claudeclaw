@@ -1011,6 +1011,36 @@ export const pageScript = String.raw`    const $ = (id) => document.getElementBy
       if (chatAbortController) chatAbortController.abort();
     }
 
+    function renderMarkdown(text) {
+      if (!text) return "";
+      var esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      esc = esc.replace(/```(\\w*)\\n([\\s\\S]*?)```/g, function(_, lang, code) {
+        return '<pre><code>' + code.replace(/\\n$/, '') + '</code></pre>';
+      });
+      esc = esc.replace(/`([^`]+)`/g, '<code>$1</code>');
+      esc = esc.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+      esc = esc.replace(/(?:^|\\n)(#{1,3}) (.+)/g, function(_, hashes, content) {
+        var level = Math.min(hashes.length + 2, 6);
+        return '<h' + level + '>' + content + '</h' + level + '>';
+      });
+      var lines = esc.split("\\n");
+      var out = [];
+      var inList = false;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var listMatch = line.match(/^(\\s*)[\\-\\*] (.+)/);
+        if (listMatch) {
+          if (!inList) { out.push("<ul>"); inList = true; }
+          out.push("<li>" + listMatch[2] + "</li>");
+        } else {
+          if (inList) { out.push("</ul>"); inList = false; }
+          out.push(line);
+        }
+      }
+      if (inList) out.push("</ul>");
+      return out.join("\\n").replace(/(?<!\\/pre>)\\n(?!<)/g, "<br>");
+    }
+
     function createChatEmptyState() {
       var empty = document.createElement("div");
       empty.className = "chat-empty";
@@ -1046,7 +1076,7 @@ export const pageScript = String.raw`    const $ = (id) => document.getElementBy
       if (msg.streaming) cls += " chat-msg-streaming";
       msgEl.className = cls;
       roleEl.textContent = msg.role === "user" ? "You" : "Claude";
-      textEl.textContent = msg.text || "";
+      textEl.innerHTML = renderMarkdown(msg.text);
 
       var metaEl = msgEl.querySelector(".chat-msg-elapsed, .chat-msg-background");
       if (msg.streaming && chatBusy) {
@@ -1158,6 +1188,10 @@ export const pageScript = String.raw`    const $ = (id) => document.getElementBy
             try {
               var ev = JSON.parse(line.slice(6));
               if (ev.type === "chunk") {
+                var prev = chatHistory[assistantIdx].text;
+                if (prev.length > 0 && !prev.endsWith("\\n") && !ev.text.startsWith("\\n")) {
+                  chatHistory[assistantIdx].text += "\\n";
+                }
                 chatHistory[assistantIdx].text += ev.text;
                 renderChatHistory();
               } else if (ev.type === "unblock") {
