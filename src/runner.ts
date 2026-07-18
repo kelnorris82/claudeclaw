@@ -31,8 +31,13 @@ const HEARTBEAT_PROMPT_FILE = join(PROMPTS_DIR, "heartbeat", "HEARTBEAT.md");
 const PROJECT_PROMPTS_DIR = join(resolveStateDir(), "prompts");
 const PROJECT_CLAUDE_MD = join(process.cwd(), "CLAUDE.md");
 const LEGACY_PROJECT_CLAUDE_MD = join(process.cwd(), ".claude", "CLAUDE.md");
-const CARAVEL_BLOCK_START = "<!-- claudeclaw:managed:start -->";
-const CARAVEL_BLOCK_END = "<!-- claudeclaw:managed:end -->";
+const CARAVEL_BLOCK_START = "<!-- caravel:managed:start -->";
+const CARAVEL_BLOCK_END = "<!-- caravel:managed:end -->";
+// Pre-rebrand marker pair. Still recognised when merging an existing CLAUDE.md
+// so installs created before the caravel rename get their block replaced in
+// place rather than having a second one appended.
+const LEGACY_BLOCK_START = "<!-- claudeclaw:managed:start -->";
+const LEGACY_BLOCK_END = "<!-- claudeclaw:managed:end -->";
 
 /**
  * Compact configuration.
@@ -228,15 +233,23 @@ export async function ensureProjectClaudeMd(): Promise<void> {
   }
 
   const normalized = content.trim();
-  const hasManagedBlock =
-    normalized.includes(CARAVEL_BLOCK_START) && normalized.includes(CARAVEL_BLOCK_END);
-  const managedPattern = new RegExp(
-    `${CARAVEL_BLOCK_START}[\\s\\S]*?${CARAVEL_BLOCK_END}`,
-    "m"
+
+  // Match the current marker pair first, then the pre-rebrand one. Checking the
+  // legacy pair matters: without it an older CLAUDE.md would gain a second
+  // managed block instead of having its existing one replaced.
+  const markerPairs = [
+    [CARAVEL_BLOCK_START, CARAVEL_BLOCK_END],
+    [LEGACY_BLOCK_START, LEGACY_BLOCK_END],
+  ];
+  const existingPair = markerPairs.find(
+    ([start, end]) => normalized.includes(start) && normalized.includes(end)
   );
 
-  const merged = hasManagedBlock
-    ? `${normalized.replace(managedPattern, managedBlock)}\n`
+  const merged = existingPair
+    ? `${normalized.replace(
+        new RegExp(`${existingPair[0]}[\\s\\S]*?${existingPair[1]}`, "m"),
+        managedBlock
+      )}\n`
     : normalized
       ? `${normalized}\n\n${managedBlock}\n`
       : `${managedBlock}\n`;
